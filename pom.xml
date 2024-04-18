@@ -45,6 +45,7 @@
                     <mainClass>com.cardio_generator.HealthDataSimulator</mainClass>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
 
