@@ -76,7 +76,7 @@ public class HealthDataSimulator {
                         } else if (outputArg.startsWith("websocket:")) {
                             try {
                                 int port = Integer.parseInt(outputArg.substring(10));
-                                // Initialize your WebSocket output strategy here
+                                // Initialize your WфebSocket output strategy here
                                 outputStrategy = new WebSocketOutputStrategy(port);
                                 System.out.println("WebSocket output will be on port: " + port);
                             } catch (NumberFormatException e) {
