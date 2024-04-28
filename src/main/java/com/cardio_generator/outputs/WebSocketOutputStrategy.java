@@ -5,16 +5,32 @@ import org.java_websocket.server.WebSocketServer;
 
 import java.net.InetSocketAddress;
 
+/**
+ * Strategy for outputting data to clients over a WebSocket.
+ */
 public class WebSocketOutputStrategy implements OutputStrategy {
 
     private WebSocketServer server;
 
+    /**
+     * Constructs a WebSocketOutputStrategy that starts a server on the specified port.
+     *
+     * @param port the port number on which the server should listen for clients
+     */
     public WebSocketOutputStrategy(int port) {
         server = new SimpleWebSocketServer(new InetSocketAddress(port));
         System.out.println("WebSocket server created on port: " + port + ", listening for connections...");
         server.start();
     }
 
+    /**
+     * Sends the output data to all connected WebSocket clients.
+     *
+     * @param patientId the unique identifier of the patient
+     * @param timestamp the time at which the data was recorded
+     * @param label     the label describing the type of data
+     * @param data      the actual data to send
+     */
     @Override
     public void output(int patientId, long timestamp, String label, String data) {
         String message = String.format("%d,%d,%s,%s", patientId, timestamp, label, data);
@@ -24,6 +40,9 @@ public class WebSocketOutputStrategy implements OutputStrategy {
         }
     }
 
+    /**
+     * A simple WebSocketServer that logs connection events.
+     */
     private static class SimpleWebSocketServer extends WebSocketServer {
 
         public SimpleWebSocketServer(InetSocketAddress address) {
@@ -42,11 +61,12 @@ public class WebSocketOutputStrategy implements OutputStrategy {
 
         @Override
         public void onMessage(WebSocket conn, String message) {
-            // Not used in this context
+            // This server is only for broadcasting outgoing messages, no incoming message handling required.
         }
 
         @Override
         public void onError(WebSocket conn, Exception ex) {
+            System.err.println("An error occurred on connection " + conn + ": " + ex.getMessage());
             ex.printStackTrace();
         }
 
