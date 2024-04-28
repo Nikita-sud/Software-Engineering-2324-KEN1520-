@@ -67,3 +67,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Project Members
 - Student ID: 6354884
 - Student ID: 6346832 
+
+## UML diagrams
+Link to the UML class, sequence and state diagrams: https://github.com/Nikita-sud/Software-Engineering-2324-KEN1520-/tree/master/uml_models
