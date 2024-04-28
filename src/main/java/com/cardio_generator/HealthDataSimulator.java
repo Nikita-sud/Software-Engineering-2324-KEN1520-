@@ -43,8 +43,7 @@ public class HealthDataSimulator {
      * @param args Command line arguments for configuring the simulation.
      * @throws IOException if an I/O error occurs.
      */
-    public static void main(String[] args) throws IOException {
-
+    public static void main(String[] args) throws IOException {        
         parseArguments(args);
 
         scheduler = Executors.newScheduledThreadPool(DEFAULT_PATIENT_COUNT * 4);
