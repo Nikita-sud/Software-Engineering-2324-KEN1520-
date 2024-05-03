@@ -9,6 +9,11 @@ import java.util.ArrayList;
 import java.util.stream.Stream;
 
 public class FileReader implements DataReader{
+    private String directoryPath;
+
+    public FileReader(String directoryPath){
+        this.directoryPath = directoryPath;
+    }
     
     /**
      * reads data from a specified source and stores it in the data storage.
@@ -17,28 +22,40 @@ public class FileReader implements DataReader{
      * @throws IOException if there is an error reading the data
      */
     public void readData(DataStorage dataStorage) throws IOException {
-        String directoryPath = "src\\main\\java\\com\\cardio_generator\\outputs";
 
         try (Stream<Path> paths = Files.walk(Paths.get(directoryPath))) {
+            // Find all the txt files and reach one by one
             paths.filter(Files::isRegularFile)
                 .filter(path -> path.toString().endsWith(".txt"))
                 .forEach(path -> {
                     try (BufferedReader reader = Files.newBufferedReader(path)) {
                         String line;
                         while ((line = reader.readLine()) != null) {
+                            // Parse the file 
+
+                            // if the structure of the file is patientId, measurementValue, recordType, timestamp 
                             String[] arrLineWords = line.split(",");
                             int patientId = Integer.parseInt(arrLineWords[0]);
                             double measurementValue = Double.parseDouble(arrLineWords[1]);
                             String recordType = arrLineWords[2];
                             long timestamp = Long.parseLong(arrLineWords[3]);
                             dataStorage.addPatientData(patientId, measurementValue, recordType, timestamp);
+
+                            // if the structure of the file is "Patient ID: %d, Timestamp: %d, Label: %s, Data: %s%n"
+                            // String[] parts = line.split(", ");
+                            // int patientId = Integer.parseInt(parts[0].split(": ")[1]);
+                            // long timestamp = Long.parseLong(parts[1].split(": ")[1]);
+                            // String label = parts[2].split(": ")[1];
+                            // String data = parts[3].split(": ")[1];
                         }
+
                     } catch (IOException e) {
-                        System.err.println("Error reading file: " + path);
+                        System.out.println("Error reading file: " + path);
                     }
                 });
         } catch (IOException e) {
             throw new IOException("Error walking through directory: " + directoryPath, e);
         }
     }
+
 }
