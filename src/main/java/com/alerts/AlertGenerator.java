@@ -135,27 +135,39 @@ public class AlertGenerator {
      */
     private void evaluateBloodOxygen(Patient patient) {
         long currentTime = System.currentTimeMillis();
-        long tenMinutesAgo = currentTime - 600000; // 10 minutes ago
-        List<PatientRecord> boRecords = dataStorage.getRecords(patient.getPatientId(), tenMinutesAgo, currentTime)
-            .stream()
-            .filter(r -> "Saturation".equals(r.getRecordType()))
-            .sorted(Comparator.comparingLong(PatientRecord::getTimestamp).reversed())
-            .collect(Collectors.toList());
+        // Fetching records from the last 10 minutes
+        List<PatientRecord> records = dataStorage.getRecords(patient.getPatientId(), currentTime - 600000, currentTime)
+                                .stream()
+                                .filter(r -> "Saturation".equals(r.getRecordType()))
+                                .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
+                                .collect(Collectors.toList());
     
-        if (!boRecords.isEmpty()) {
-            // Check for low saturation alert
-            boRecords.forEach(record -> {
-                if (record.getMeasurementValue() < 92) {
-                    triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Low Saturation Alert", record.getTimestamp()));
+        // Check for low saturation alert across all records
+        for (PatientRecord record : records) {
+            if (record.getMeasurementValue() < 92) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Low Saturation Alert", record.getTimestamp()));
+                // Break after triggering an alert to avoid multiple alerts for the same condition
+                break;
+            }
+        }
+    
+        // Check for rapid drop alert between consecutive records
+        for (int i = 1; i < records.size(); i++) {
+            double previousValue = records.get(i - 1).getMeasurementValue();
+            double currentValue = records.get(i).getMeasurementValue();
+            if (previousValue > 0) { // Avoid division by zero
+                double dropPercentage = ((previousValue - currentValue) / previousValue) * 100;
+                if (dropPercentage >= 5) {
+                    triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Rapid Blood Oxygen Drop Alert", records.get(i).getTimestamp()));
+                    // Break after triggering to ensure only one rapid drop alert is sent per evaluation
+                    break;
                 }
-            });
-    
-            // Check for rapid drop alert if there are at least two records
-            if (boRecords.size() >= 2 && (boRecords.get(0).getMeasurementValue() - boRecords.get(1).getMeasurementValue() >= 5)) {
-                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Rapid Blood Oxygen Drop Alert", currentTime));
             }
         }
     }
+    
+    
+    
     
 
     /**
