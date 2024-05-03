@@ -8,57 +8,52 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Generates alerts based on the analysis of patient health data.
- * This class handles the evaluation of various health indicators such as blood pressure,
- * oxygen saturation, and ECG readings to detect conditions that may require immediate attention.
+ * Handles the generation of medical alerts based on patient data analysis. This class evaluates various health
+ * indicators such as blood pressure, oxygen saturation, and ECG readings to detect conditions requiring urgent attention.
  */
 public class AlertGenerator {
     private DataStorage dataStorage;
 
     /**
-     * Constructs an {@code AlertGenerator} with a specified {@code DataStorage}.
-     * The {@code DataStorage} is used to retrieve patient data that this class
-     * will monitor and evaluate.
+     * Initializes a new AlertGenerator instance with a specific DataStorage.
      *
-     * @param dataStorage the data storage system that provides access to patient
-     *                    data
+     * @param dataStorage the data storage system used to access patient data
      */
     public AlertGenerator(DataStorage dataStorage) {
         this.dataStorage = dataStorage;
     }
 
     /**
-     * Evaluates the specified patient's data to determine if any alert conditions
-     * are met. If a condition is met, an alert is triggered via the
-     * {@link #triggerAlert}
-     * method. This method should define the specific conditions under which an
-     * alert
-     * will be triggered.
+     * Evaluates patient data to determine if any alert conditions are met.
+     * If a condition is met, an alert is triggered.
      *
      * @param patient the patient data to evaluate for alert conditions
+     * @throws NullPointerException if the patient object is null, indicating no patient data is available for analysis
      */
     public void evaluateData(Patient patient) {
-        if (patient != null) {
-            evaluateBloodPressure(patient);
-            evaluateBloodOxygen(patient);
-            evaluateECGData(patient);
-            evaluateHypotensiveHypoxemia(patient);
-        } else {
-            System.out.println("No patient data available for analysis.");
+        if (patient == null) {
+            throw new NullPointerException("Patient data is null.");
         }
+        evaluateBloodPressure(patient);
+        evaluateBloodOxygen(patient);
+        evaluateECGData(patient);
+        evaluateHypotensiveHypoxemia(patient);
     }
 
+    /**
+     * Evaluates the patient's recent blood pressure and oxygen saturation to identify hypotensive hypoxemia conditions.
+     *
+     * @param patient the patient to evaluate
+     */
     private void evaluateHypotensiveHypoxemia(Patient patient) {
         long currentTime = System.currentTimeMillis();
-        List<PatientRecord> recentRecords = dataStorage.getRecords(patient.getPatientId(), currentTime - 600000, currentTime); // Last 10 minutes
+        List<PatientRecord> recentRecords = dataStorage.getRecords(patient.getPatientId(), currentTime - 600000, currentTime);
 
         boolean lowBP = recentRecords.stream()
-            .filter(r -> "SystolicPressure".equals(r.getRecordType()) && r.getMeasurementValue() < 90)
-            .findFirst().isPresent();
+            .anyMatch(r -> "SystolicPressure".equals(r.getRecordType()) && r.getMeasurementValue() < 90);
 
         boolean lowSaturation = recentRecords.stream()
-            .filter(r -> "Saturation".equals(r.getRecordType()) && r.getMeasurementValue() < 92)
-            .findFirst().isPresent();
+            .anyMatch(r -> "Saturation".equals(r.getRecordType()) && r.getMeasurementValue() < 92);
 
         if (lowBP && lowSaturation) {
             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Hypotensive Hypoxemia Alert", currentTime));
@@ -66,9 +61,9 @@ public class AlertGenerator {
     }
 
     /**
-     * Analyzes blood pressure records to detect critical conditions and trends for both systolic and diastolic pressures.
+     * Evaluates blood pressure records to detect any critical conditions or trends that require attention.
      *
-     * @param patient The patient whose blood pressure is being monitored.
+     * @param patient the patient whose blood pressure is monitored
      */
     private void evaluateBloodPressure(Patient patient) {
         long currentTime = System.currentTimeMillis();
@@ -88,34 +83,41 @@ public class AlertGenerator {
             .limit(3)
             .collect(Collectors.toList());
 
-        // Analyze trends for Systolic Pressure
-        if (systolicRecords.size() == 3 && checkPressureTrend(systolicRecords, 10)) {
+        if (checkPressureTrendsAndTriggerAlerts(systolicRecords, "Systolic", patient, currentTime)) {
             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Systolic Pressure Trend Alert", currentTime));
         }
-        // Analyze trends for Diastolic Pressure
-        if (diastolicRecords.size() == 3 && checkPressureTrend(diastolicRecords, 10)) {
+        if (checkPressureTrendsAndTriggerAlerts(diastolicRecords, "Diastolic", patient, currentTime)) {
             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Diastolic Pressure Trend Alert", currentTime));
         }
-
-        // Check for critical thresholds
-        systolicRecords.forEach(record -> {
-            if (record.getMeasurementValue() > 180 || record.getMeasurementValue() < 90) {
-                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Critical Systolic Pressure Alert", record.getTimestamp()));
-            }
-        });
-        diastolicRecords.forEach(record -> {
-            if (record.getMeasurementValue() > 120 || record.getMeasurementValue() < 60) {
-                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Critical Diastolic Pressure Alert", record.getTimestamp()));
-            }
-        });
     }
 
     /**
-     * Checks for a consistent increase or decrease trend in measurement values across records.
+     * Checks and triggers alerts for critical blood pressure thresholds and trends.
      *
-     * @param records   The list of patient records.
-     * @param threshold The minimum difference to consider a trend consistent.
-     * @return true if a consistent trend is found, false otherwise.
+     * @param records   the list of blood pressure records to evaluate
+     * @param type      the type of blood pressure ("Systolic" or "Diastolic")
+     * @param patient   the patient being monitored
+     * @param currentTime the current time in milliseconds
+     * @return true if a trend alert is triggered, false otherwise
+     */
+    private boolean checkPressureTrendsAndTriggerAlerts(List<PatientRecord> records, String type, Patient patient, long currentTime) {
+        boolean trendAlert = false;
+        for (PatientRecord record : records) {
+            if (record.getMeasurementValue() > 180 || record.getMeasurementValue() < 90) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Critical " + type + " Pressure Alert", record.getTimestamp()));
+            }
+        }
+
+        trendAlert = records.size() == 3 && checkPressureTrend(records, 10);
+        return trendAlert;
+    }
+
+    /**
+     * Determines if there is a consistent trend in blood pressure changes.
+     *
+     * @param records   a list of blood pressure records
+     * @param threshold the minimum difference between records to consider it a trend
+     * @return true if there is a consistent trend, false otherwise
      */
     private boolean checkPressureTrend(List<PatientRecord> records, int threshold) {
         boolean increasing = true;
@@ -127,53 +129,53 @@ public class AlertGenerator {
         return increasing || decreasing;
     }
 
-
     /**
-     * Monitors oxygen saturation levels and alerts for rapid drops within a short period.
+     * Evaluates oxygen saturation data to detect critically low levels or rapid decreases that may indicate a respiratory issue.
      *
-     * @param patient The patient whose oxygen levels are being monitored.
+     * @param patient the patient whose oxygen saturation levels are being monitored
      */
     private void evaluateBloodOxygen(Patient patient) {
         long currentTime = System.currentTimeMillis();
-        // Fetching records from the last 10 minutes
         List<PatientRecord> records = dataStorage.getRecords(patient.getPatientId(), currentTime - 600000, currentTime)
-                                .stream()
-                                .filter(r -> "Saturation".equals(r.getRecordType()))
-                                .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
-                                .collect(Collectors.toList());
-    
-        // Check for low saturation alert across all records
+            .stream()
+            .filter(r -> "Saturation".equals(r.getRecordType()))
+            .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
+            .collect(Collectors.toList());
+
         for (PatientRecord record : records) {
             if (record.getMeasurementValue() < 92) {
                 triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Low Saturation Alert", record.getTimestamp()));
-                // Break after triggering an alert to avoid multiple alerts for the same condition
                 break;
             }
         }
-    
-        // Check for rapid drop alert between consecutive records
+
         for (int i = 1; i < records.size(); i++) {
-            double previousValue = records.get(i - 1).getMeasurementValue();
-            double currentValue = records.get(i).getMeasurementValue();
-            if (previousValue > 0) { // Avoid division by zero
-                double dropPercentage = ((previousValue - currentValue) / previousValue) * 100;
-                if (dropPercentage >= 5) {
-                    triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Rapid Blood Oxygen Drop Alert", records.get(i).getTimestamp()));
-                    // Break after triggering to ensure only one rapid drop alert is sent per evaluation
-                    break;
-                }
+            double dropPercentage = calculateDropPercentage(records.get(i - 1), records.get(i));
+            if (dropPercentage >= 5) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Rapid Blood Oxygen Drop Alert", records.get(i).getTimestamp()));
+                break;
             }
         }
     }
-    
-    
-    
-    
 
     /**
-     * Analyzes ECG data to identify abnormal heart rates and irregular beat patterns.
+     * Calculates the percentage drop in saturation between two records.
      *
-     * @param patient The patient whose ECG data is being analyzed.
+     * @param previous the previous saturation record
+     * @param current  the current saturation record
+     * @return the percentage drop
+     */
+    private double calculateDropPercentage(PatientRecord previous, PatientRecord current) {
+        if (previous.getMeasurementValue() == 0) {
+            return 0;
+        }
+        return 100.0 * (previous.getMeasurementValue() - current.getMeasurementValue()) / previous.getMeasurementValue();
+    }
+
+    /**
+     * Evaluates ECG data for abnormal heart rates or irregular beat patterns.
+     *
+     * @param patient the patient whose ECG data is being analyzed
      */
     private void evaluateECGData(Patient patient) {
         long currentTime = System.currentTimeMillis();
@@ -210,12 +212,9 @@ public class AlertGenerator {
     }
 
     /**
-     * Triggers an alert for the monitoring system. This method can be extended to
-     * notify medical staff, log the alert, or perform other actions. The method
-     * currently assumes that the alert information is fully formed when passed as
-     * an argument.
+     * Triggers an alert based on identified conditions and logs the alert details.
      *
-     * @param alert the alert object containing details about the alert condition
+     * @param alert the alert to be triggered
      */
     private void triggerAlert(Alert alert) {
         System.out.println("Alert triggered: " + alert.getCondition() + " for patient " + alert.getPatientId() + " at " + alert.getTimestamp());
