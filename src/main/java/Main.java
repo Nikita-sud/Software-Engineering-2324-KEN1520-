@@ -9,6 +9,7 @@ public class Main {
             DataStorage.main(new String[]{});
         } else {
             HealthDataSimulator.main(new String[]{});
+            
         }
     }
 }
