@@ -53,6 +53,10 @@ public class Patient {
      * @return a list of PatientRecord objects that fall within the specified time
      *         range
      */
+
+    public int getPatientId(){
+        return patientId;
+    }
     
     public List<PatientRecord> getRecords(long startTime, long endTime) {
         return patientRecords.stream()
