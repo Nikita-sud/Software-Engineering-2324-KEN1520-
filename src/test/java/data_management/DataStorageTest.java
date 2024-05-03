@@ -15,7 +15,7 @@ class DataStorageTest {
     @Test
     void testAddAndGetRecords() {
 
-        DataReader reader = new FileReader("src\\test\\java\\data_management\\outputFilesTest");
+        DataReader reader = new FileReader("src/test/java/data_management/outputFilesTest");
         
         DataStorage storage = new DataStorage();
         
