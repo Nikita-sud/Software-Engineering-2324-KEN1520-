@@ -1,4 +1,5 @@
-package data_management;
+package alerts_management;
+
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
