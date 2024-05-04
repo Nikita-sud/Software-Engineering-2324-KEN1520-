@@ -47,7 +47,7 @@ class AlertGeneratorTest {
     void testEvaluateSystolicPressureCriticalAlert() {
         Patient patient = new Patient(1);
         List<PatientRecord> systolicRecord = Arrays.asList(
-            new PatientRecord(1, 200, "SystolicPressure", currentTime)  // Превышение систолического порога
+            new PatientRecord(1, 200, "SystolicPressure", currentTime)  
         );
 
         Mockito.when(mockDataStorage.getRecords(Mockito.anyInt(), Mockito.anyLong(), Mockito.anyLong()))
@@ -64,7 +64,7 @@ class AlertGeneratorTest {
     void testEvaluateDiastolicPressureCriticalAlert() {
         Patient patient = new Patient(1);
         List<PatientRecord> diastolicRecord = Arrays.asList(
-            new PatientRecord(1, 10, "DiastolicPressure", currentTime)  // Снижение диастолического порога
+            new PatientRecord(1, 10, "DiastolicPressure", currentTime) 
         );
 
         Mockito.when(mockDataStorage.getRecords(Mockito.anyInt(), Mockito.anyLong(), Mockito.anyLong()))
@@ -256,7 +256,7 @@ class AlertGeneratorTest {
         Patient patient = new Patient(1);
         long currentTime = System.currentTimeMillis();
         List<PatientRecord> ecgRecords = Arrays.asList(
-            new PatientRecord(1, 45, "ECG", currentTime) // очень низкая частота сердцебиения
+            new PatientRecord(1, 45, "ECG", currentTime)
         );
 
         Mockito.when(mockDataStorage.getRecords(Mockito.anyInt(), Mockito.anyLong(), Mockito.anyLong()))
@@ -283,7 +283,6 @@ class AlertGeneratorTest {
 
         alertGenerator.evaluateData(patient);
 
-        // Проверяем, что алерты не срабатывают для нормальных значений
         assertFalse(outContent.toString().contains("Alert"),
                     "No alerts should be triggered for normal values.");
     }
@@ -328,11 +327,10 @@ class AlertGeneratorTest {
         Patient patient = new Patient(1);
         long baseTime = System.currentTimeMillis();
 
-        // Создание записей ECG, где один из интервалов будет отличаться на более чем 10% от среднего
         List<PatientRecord> ecgRecords = Arrays.asList(
             new PatientRecord(1, 60, "ECG", baseTime - 3000),
-            new PatientRecord(1, 60, "ECG", baseTime - 2000), // Интервал 1000 мс
-            new PatientRecord(1, 60, "ECG", baseTime - 500)  // Увеличенный интервал 1150 мс, что на 150 мс больше
+            new PatientRecord(1, 60, "ECG", baseTime - 2000), 
+            new PatientRecord(1, 60, "ECG", baseTime - 500) 
         );
 
         Mockito.when(mockDataStorage.getRecords(Mockito.anyInt(), Mockito.anyLong(), Mockito.anyLong()))
@@ -340,7 +338,6 @@ class AlertGeneratorTest {
 
         alertGenerator.evaluateData(patient);
 
-        // Проверяем, что срабатывает алерт о нерегулярности сердечных ударов
         assertTrue(outContent.toString().contains("Irregular Beat Alert"),
             "Expected 'Irregular Beat Alert' but got: " + outContent.toString());
     }
