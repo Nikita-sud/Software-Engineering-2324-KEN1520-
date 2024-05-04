@@ -64,13 +64,5 @@ public class Patient {
                              .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
                              .collect(Collectors.toList());
     }
-    
 
-    public List<PatientRecord> getLastNRecords(int count, String type) {
-        return patientRecords.stream()
-                             .filter(r -> type.equals(r.getRecordType()))
-                             .sorted(Comparator.comparingLong(PatientRecord::getTimestamp).reversed())
-                             .limit(count)
-                             .collect(Collectors.toList());
-    }
 }

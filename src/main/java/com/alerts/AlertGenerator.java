@@ -68,67 +68,56 @@ public class AlertGenerator {
     private void evaluateBloodPressure(Patient patient) {
         long currentTime = System.currentTimeMillis();
         long oneDayAgo = currentTime - 86400000;
-
+    
         List<PatientRecord> systolicRecords = dataStorage.getRecords(patient.getPatientId(), oneDayAgo, currentTime)
             .stream()
             .filter(r -> "SystolicPressure".equals(r.getRecordType()))
             .sorted(Comparator.comparingLong(PatientRecord::getTimestamp).reversed())
-            .limit(3)
             .collect(Collectors.toList());
-
+    
         List<PatientRecord> diastolicRecords = dataStorage.getRecords(patient.getPatientId(), oneDayAgo, currentTime)
             .stream()
             .filter(r -> "DiastolicPressure".equals(r.getRecordType()))
             .sorted(Comparator.comparingLong(PatientRecord::getTimestamp).reversed())
-            .limit(3)
             .collect(Collectors.toList());
-
-        if (checkPressureTrendsAndTriggerAlerts(systolicRecords, "Systolic", patient, currentTime)) {
-            triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Systolic Pressure Trend Alert", currentTime));
+    
+        if (!systolicRecords.isEmpty()) {
+            checkAndTriggerPressureAlerts(systolicRecords, "Systolic", currentTime, patient);
         }
-        if (checkPressureTrendsAndTriggerAlerts(diastolicRecords, "Diastolic", patient, currentTime)) {
-            triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Diastolic Pressure Trend Alert", currentTime));
+        if (!diastolicRecords.isEmpty()) {
+            checkAndTriggerPressureAlerts(diastolicRecords, "Diastolic", currentTime, patient);
         }
     }
-
-    /**
-     * Checks and triggers alerts for critical blood pressure thresholds and trends.
-     *
-     * @param records   the list of blood pressure records to evaluate
-     * @param type      the type of blood pressure ("Systolic" or "Diastolic")
-     * @param patient   the patient being monitored
-     * @param currentTime the current time in milliseconds
-     * @return true if a trend alert is triggered, false otherwise
-     */
-    private boolean checkPressureTrendsAndTriggerAlerts(List<PatientRecord> records, String type, Patient patient, long currentTime) {
-        boolean trendAlert = false;
+    
+    public void checkAndTriggerPressureAlerts(List<PatientRecord> records, String type, long currentTime, Patient patient) {
+        // Check critical thresholds
         for (PatientRecord record : records) {
-            if (record.getMeasurementValue() > 180 || record.getMeasurementValue() < 90) {
-                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Critical " + type + " Pressure Alert", record.getTimestamp()));
+            if ((type.equals("Systolic") && (record.getMeasurementValue() > 180 || record.getMeasurementValue() < 90))) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Critical Pressure Threshold Alert (Systolic)", record.getTimestamp()));
+            }
+            if ((type.equals("Diastolic") && (record.getMeasurementValue() > 120 || record.getMeasurementValue() < 60))) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Critical Pressure Threshold Alert (Diastolic)", record.getTimestamp()));
             }
         }
-
-        trendAlert = records.size() == 3 && checkPressureTrend(records, 10);
-        return trendAlert;
-    }
-
-    /**
-     * Determines if there is a consistent trend in blood pressure changes.
-     *
-     * @param records   a list of blood pressure records
-     * @param threshold the minimum difference between records to consider it a trend
-     * @return true if there is a consistent trend, false otherwise
-     */
-    private boolean checkPressureTrend(List<PatientRecord> records, int threshold) {
-        boolean increasing = true;
-        boolean decreasing = true;
-        for (int i = 0; i < records.size() - 1; i++) {
-            increasing &= (records.get(i + 1).getMeasurementValue() - records.get(i).getMeasurementValue() > threshold);
-            decreasing &= (records.get(i).getMeasurementValue() - records.get(i + 1).getMeasurementValue() > threshold);
+    
+        // Check trends
+        if (records.size() >= 3) {
+            boolean increasing = true;
+            boolean decreasing = true;
+            for (int i = 0; i < records.size() - 1; i++) {
+                increasing &= (records.get(i).getMeasurementValue() - records.get(i + 1).getMeasurementValue() > 10);
+                decreasing &= (records.get(i + 1).getMeasurementValue() - records.get(i).getMeasurementValue() > 10);
+            }
+    
+            if (increasing) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), type + "Pressure Increasing Trend Alert", currentTime));
+            }
+            if (decreasing) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), type + "Pressure Decreasing Trend Alert", currentTime));
+            }
         }
-        return increasing || decreasing;
     }
-
+    
     /**
      * Evaluates oxygen saturation data to detect critically low levels or rapid decreases that may indicate a respiratory issue.
      *
@@ -141,37 +130,25 @@ public class AlertGenerator {
             .filter(r -> "Saturation".equals(r.getRecordType()))
             .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
             .collect(Collectors.toList());
-
+    
         for (PatientRecord record : records) {
             if (record.getMeasurementValue() < 92) {
                 triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Low Saturation Alert", record.getTimestamp()));
-                break;
+                break; // Ensure only the first applicable alert is triggered
             }
         }
-
+    
         for (int i = 1; i < records.size(); i++) {
-            double dropPercentage = calculateDropPercentage(records.get(i - 1), records.get(i));
+            double dropPercentage = 100.0 * (records.get(i - 1).getMeasurementValue() - records.get(i).getMeasurementValue()) / records.get(i - 1).getMeasurementValue();
             if (dropPercentage >= 5) {
                 triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Rapid Blood Oxygen Drop Alert", records.get(i).getTimestamp()));
-                break;
+                break; // Ensure proper alert sequence
             }
         }
     }
-
-    /**
-     * Calculates the percentage drop in saturation between two records.
-     *
-     * @param previous the previous saturation record
-     * @param current  the current saturation record
-     * @return the percentage drop
-     */
-    private double calculateDropPercentage(PatientRecord previous, PatientRecord current) {
-        if (previous.getMeasurementValue() == 0) {
-            return 0;
-        }
-        return 100.0 * (previous.getMeasurementValue() - current.getMeasurementValue()) / previous.getMeasurementValue();
-    }
-
+    
+    
+    
     /**
      * Evaluates ECG data for abnormal heart rates or irregular beat patterns.
      *
@@ -185,31 +162,45 @@ public class AlertGenerator {
             .filter(r -> "ECG".equals(r.getRecordType()))
             .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
             .collect(Collectors.toList());
-
+    
         if (ecgRecords.isEmpty()) {
             return;
         }
-
+    
         // Check for abnormal heart rate
         for (PatientRecord record : ecgRecords) {
             if (record.getMeasurementValue() < 50 || record.getMeasurementValue() > 100) {
                 triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Abnormal Heart Rate Alert", record.getTimestamp()));
             }
         }
-
-        // Check for irregular beats by comparing intervals
+    
+        // Calculate the average interval and determine irregularities
+        double averageInterval = calculateAverageInterval(ecgRecords);
+        double allowableVariation = averageInterval * 0.1; // Allowing 10% variation
+    
         PatientRecord previousRecord = ecgRecords.get(0);
         for (int i = 1; i < ecgRecords.size(); i++) {
             PatientRecord currentRecord = ecgRecords.get(i);
             long intervalDifference = Math.abs(currentRecord.getTimestamp() - previousRecord.getTimestamp());
-            // Assuming 10% variation is significant - this threshold can be adjusted
-            if (intervalDifference > 1000 * 0.1) { // Adjust this threshold based on actual criteria
+    
+            if (Math.abs(intervalDifference - averageInterval) > allowableVariation) {
                 triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Irregular Beat Alert", currentRecord.getTimestamp()));
                 break;
             }
             previousRecord = currentRecord;
         }
     }
+    
+    private double calculateAverageInterval(List<PatientRecord> ecgRecords) {
+        long totalInterval = 0;
+        for (int i = 1; i < ecgRecords.size(); i++) {
+            totalInterval += (ecgRecords.get(i).getTimestamp() - ecgRecords.get(i - 1).getTimestamp());
+        }
+        return totalInterval / (double)(ecgRecords.size() - 1);
+    }
+    
+    
+    
 
     /**
      * Triggers an alert based on identified conditions and logs the alert details.
