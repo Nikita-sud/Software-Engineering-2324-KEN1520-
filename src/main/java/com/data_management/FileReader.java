@@ -11,7 +11,16 @@ public class FileReader implements DataReader{
     private String directoryPath;
 
     /**
-     * constructor for the FileReader
+     * Default constructor for the FileReader
+     * 
+     * @param directoryPath the path to the directory wit the output files (eg "src\\test\\java\\data_management\\outputFilesTest")
+     */
+    public FileReader(){
+        this.directoryPath = "/output";
+    }
+
+    /**
+     * constructor for the FileReader with the specific path
      * 
      * @param directoryPath the path to the directory wit the output files (eg "src\\test\\java\\data_management\\outputFilesTest")
      */
