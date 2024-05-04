@@ -71,6 +71,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## UML diagrams
 Link to the UML class, sequence and state diagrams: https://github.com/Nikita-sud/Software-Engineering-2324-KEN1520-/tree/master/uml_models
 
-## JACOCO Report
-The JACOCO report can be found at the following location
-```target/site/jacoco/index.html```
+
