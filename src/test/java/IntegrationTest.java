@@ -1,13 +1,12 @@
-import com.alerts.Alert;
 import com.alerts.AlertGenerator;
 import com.data_management.DataStorage;
 import com.data_management.Patient;
 import com.data_management.PatientRecord;
 import com.data_management.WebSocketClientReader;
 import org.java_websocket.handshake.ServerHandshake;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -16,19 +15,35 @@ import java.net.URISyntaxException;
 import java.util.List;
 
 import java.io.IOException;
-import static org.junit.Assert.*;
+
 import static org.mockito.Mockito.*;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 public class IntegrationTest {
+
     private DataStorage dataStorage;
     private AlertGenerator alertGenerator;
     private WebSocketClientReader webSocketClientReader;
+    private ByteArrayOutputStream outContent;
+    private PrintStream originalOut;
+    private long currentTime;
 
-    @Before
-    public void setUp() throws URISyntaxException {
+    @BeforeEach
+    void setUp() throws URISyntaxException {
         dataStorage = new DataStorage();
-        alertGenerator = spy(new AlertGenerator(dataStorage)); // Spying on AlertGenerator
+        alertGenerator = spy(new AlertGenerator(dataStorage));
         webSocketClientReader = spy(new WebSocketClientReader(new URI("ws://localhost:8080"), dataStorage));
+
+        outContent = new ByteArrayOutputStream();
+        originalOut = System.out;
+        System.setOut(new PrintStream(outContent));
+        currentTime = System.currentTimeMillis();
+    }
+
+    @AfterEach
+    void restoreStreams() {
+        System.setOut(originalOut);
     }
 
     @Test
@@ -38,31 +53,30 @@ public class IntegrationTest {
 
         webSocketClientReader.onOpen(mock(ServerHandshake.class));
 
-        String message = "Patient ID: 1, Timestamp: 1714748468033, Label: ECG, Data: 120";
+        // Ensure the timestamp falls within the expected range
+        long timestamp = currentTime - 1000; // 1 second ago
+
+        String message = "Patient ID: 1, Timestamp: " + timestamp + ", Label: ECG, Data: 160";
         webSocketClientReader.onMessage(message);
 
         List<Patient> patients = dataStorage.getAllPatients();
-        assertFalse("Patient data should not be empty", patients.isEmpty());
+        assertFalse(patients.isEmpty(), "Patient data should not be empty");
 
         Patient patient = patients.get(0);
-        assertEquals("Patient ID should be 1", 1, patient.getPatientId());
+        assertEquals(1, patient.getPatientId(), "Patient ID should be 1");
 
         // Verify the data was stored correctly
-        List<PatientRecord> records = dataStorage.getRecords(1, 1714748468033L, 1714748468033L);
-        assertFalse("Patient records should not be empty", records.isEmpty());
-        assertEquals("There should be exactly one record", 1, records.size());
-        assertEquals("The record type should be ECG", "ECG", records.get(0).getRecordType());
-        assertEquals("The measurement value should be 120", 120, records.get(0).getMeasurementValue(), 0.001);
-
-        // Capture the alerts triggered
-        ArgumentCaptor<Alert> alertCaptor = ArgumentCaptor.forClass(Alert.class);
-        doNothing().when(alertGenerator).triggerAlert(alertCaptor.capture());
+        List<PatientRecord> records = dataStorage.getRecords(1, timestamp, timestamp);
+        assertFalse(records.isEmpty(), "Patient records should not be empty");
+        assertEquals(1, records.size(), "There should be exactly one record");
+        assertEquals("ECG", records.get(0).getRecordType(), "The record type should be ECG");
+        assertEquals(160, records.get(0).getMeasurementValue(), 0.001, "The measurement value should be 160");
 
         alertGenerator.evaluateData(patient);
 
-        // List<Alert> alerts = alertCaptor.getAllValues();
-        // assertFalse("Alerts should not be empty", alerts.isEmpty());
-        // assertTrue("There should be an alert for abnormal heart rate", alerts.stream().anyMatch(alert -> alert.getCondition().contains("Abnormal Heart Rate Alert")));
+        String output = outContent.toString();
+        assertTrue(output.contains("Abnormal Heart Rate Alert"),
+                "Expected 'Abnormal Heart Rate Alert' for very high heart rate.");
     }
 
     @Test
@@ -78,10 +92,10 @@ public class IntegrationTest {
 
         System.setErr(originalErr);
 
-        // String errOutput = errContent.toString();
-        // assertTrue("Error output should contain 'Test error'", errOutput.contains("An error occurred: Test error"));
-        // assertTrue("Error output should contain 'Reconnection attempt failed'", errOutput.contains("Reconnection attempt failed: Test exception"));
-        // verify(webSocketClientReader, atLeastOnce()).reconnect();
+        String errOutput = errContent.toString();
+        assertTrue(errOutput.contains("Test error"));
+        assertTrue(errOutput.contains("An error occurred"));
+        verify(webSocketClientReader, atLeastOnce()).reconnect();
     }
 
     @Test
@@ -99,7 +113,7 @@ public class IntegrationTest {
         System.setErr(originalErr);
 
         String errOutput = errContent.toString();
-        assertTrue("Error output should contain 'Connection attempt failed'", errOutput.contains("Connection attempt failed: Connection attempt failed"));
+        assertTrue(errOutput.contains("Connection attempt failed: Connection attempt failed"));
     }
 
     @Test
