@@ -13,13 +13,14 @@ import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
-
 import java.io.IOException;
 
 import static org.mockito.Mockito.*;
-
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Integration tests for the data management and alert generation system.
+ */
 public class IntegrationTest {
 
     private DataStorage dataStorage;
@@ -29,6 +30,11 @@ public class IntegrationTest {
     private PrintStream originalOut;
     private long currentTime;
 
+    /**
+     * Sets up the test environment before each test.
+     * 
+     * @throws URISyntaxException if the URI syntax is incorrect
+     */
     @BeforeEach
     void setUp() throws URISyntaxException {
         dataStorage = new DataStorage();
@@ -41,11 +47,19 @@ public class IntegrationTest {
         currentTime = System.currentTimeMillis();
     }
 
+    /**
+     * Restores the original output streams after each test.
+     */
     @AfterEach
     void restoreStreams() {
         System.setOut(originalOut);
     }
 
+    /**
+     * Tests the full integration of WebSocket client, data storage, and alert generation.
+     * 
+     * @throws Exception if any error occurs during the test
+     */
     @Test
     public void testIntegration() throws Exception {
         doNothing().when(webSocketClientReader).connect();
@@ -79,6 +93,11 @@ public class IntegrationTest {
                 "Expected 'Abnormal Heart Rate Alert' for very high heart rate.");
     }
 
+    /**
+     * Tests the integration with error handling during WebSocket client operations.
+     * 
+     * @throws Exception if any error occurs during the test
+     */
     @Test
     public void testIntegrationWithErrorHandling() throws Exception {
         doThrow(new RuntimeException("Test exception")).when(webSocketClientReader).connect();
@@ -98,6 +117,13 @@ public class IntegrationTest {
         verify(webSocketClientReader, atLeastOnce()).reconnect();
     }
 
+    /**
+     * Tests the behavior when the WebSocket client fails to connect during read data operation.
+     * 
+     * @param uri the URI to connect to
+     * @throws URISyntaxException if the URI syntax is incorrect
+     * @throws IOException if an I/O error occurs
+     */
     @Test
     public void testReadDataConnectionAttemptFailure() throws URISyntaxException, IOException {
         WebSocketClientReader spyClient = spy(webSocketClientReader);
@@ -116,6 +142,13 @@ public class IntegrationTest {
         assertTrue(errOutput.contains("Connection attempt failed: Connection attempt failed"));
     }
 
+    /**
+     * Tests the behavior when the WebSocket client successfully connects during read data operation.
+     * 
+     * @param uri the URI to connect to
+     * @throws URISyntaxException if the URI syntax is incorrect
+     * @throws IOException if an I/O error occurs
+     */
     @Test
     public void testReadDataConnectionSuccess() throws URISyntaxException, IOException {
         WebSocketClientReader spyClient = spy(webSocketClientReader);

@@ -23,16 +23,27 @@ import java.util.concurrent.TimeUnit;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
+/**
+ * Unit test for WebSocketClientReader class.
+ */
 public class WebSocketClientReaderTest {
     private WebSocketClientReader client;
     private DataStorage mockStorage;
 
+    /**
+     * Sets up the test environment before each test.
+     * 
+     * @throws URISyntaxException if the URI syntax is incorrect
+     */
     @Before
     public void setUp() throws URISyntaxException {
         mockStorage = mock(DataStorage.class);
         client = new WebSocketClientReader(new URI("ws://localhost:8080"), mockStorage);
     }
 
+    /**
+     * Tests the onOpen method to ensure the connection message is printed.
+     */
     @Test
     public void testOnOpen() {
         // Set up a stream to capture System.out
@@ -51,6 +62,9 @@ public class WebSocketClientReaderTest {
         assertTrue(outContent.toString().contains("Connected to server"));
     }
 
+    /**
+     * Tests the onMessage method with a valid message.
+     */
     @Test
     public void testOnMessage_validMessage() {
         String message = "Patient ID: 10, Timestamp: 1714748468033, Label: ECG, Data: -0.34656395320945643";
@@ -58,6 +72,9 @@ public class WebSocketClientReaderTest {
         verify(mockStorage).addPatientData(eq(10), eq(-0.34656395320945643), eq("ECG"), eq(1714748468033L));
     }
 
+    /**
+     * Tests the onMessage method with an invalid message format.
+     */
     @Test
     public void testOnMessage_invalidFormat() {
         String message = "Invalid message format";
@@ -65,6 +82,9 @@ public class WebSocketClientReaderTest {
         verify(mockStorage, never()).addPatientData(anyInt(), anyDouble(), anyString(), anyLong());
     }
 
+    /**
+     * Tests the onMessage method with a message containing a parsing error.
+     */
     @Test
     public void testOnMessage_parsingError() {
         String message = "Patient ID: not_a_number, Timestamp: 1714748468033, Label: ECG, Data: -0.34656395320945643";
@@ -72,6 +92,9 @@ public class WebSocketClientReaderTest {
         verify(mockStorage, never()).addPatientData(anyInt(), anyDouble(), anyString(), anyLong());
     }
 
+    /**
+     * Tests the onMessage method handling an unexpected error.
+     */
     @Test
     public void testOnMessage_unexpectedError() {
         WebSocketClientReader spyClient = spy(client);
@@ -95,13 +118,20 @@ public class WebSocketClientReaderTest {
         assertTrue(errContent.toString().contains("Unexpected error: Unexpected error"));
     }
 
-
+    /**
+     * Tests the onClose method to ensure the client is closed properly.
+     */
     @Test
     public void testOnClose() {
         client.onClose(1000, "Normal closure", false);
         assertFalse(client.isOpen());
     }
 
+    /**
+     * Tests the onClose method handling an exception during reconnection.
+     * 
+     * @throws IOException if an I/O error occurs
+     */
     @Test
     public void testOnCloseWithException() throws IOException {
         WebSocketClientReader spyClient = spy(client);
@@ -121,6 +151,11 @@ public class WebSocketClientReaderTest {
         assertTrue(errContent.toString().contains("Reconnection attempt failed: Reconnection failed"));
     }
 
+    /**
+     * Tests the onError method to ensure reconnection is attempted and errors are logged.
+     * 
+     * @throws InterruptedException if the current thread is interrupted while waiting
+     */
     @Test
     public void testOnError() throws InterruptedException {
         WebSocketClientReader spyClient = spy(client);
@@ -152,6 +187,11 @@ public class WebSocketClientReaderTest {
         assertTrue(errContent.toString().contains("Test exception"));
     }
 
+    /**
+     * Tests the onError method handling an exception during reconnection attempt.
+     * 
+     * @throws InterruptedException if the current thread is interrupted while waiting
+     */
     @Test
     public void testOnReconnectAttemptFailure() throws InterruptedException {
         WebSocketClientReader spyClient = spy(client);
@@ -179,6 +219,11 @@ public class WebSocketClientReaderTest {
         assertTrue(errContent.toString().contains("Reconnection attempt failed: Reconnection failed"));
     }
 
+    /**
+     * Tests the reconnect method to ensure it is called during abnormal closure.
+     * 
+     * @throws IOException if an I/O error occurs
+     */
     @Test
     public void testReconnect() throws IOException {
         WebSocketClientReader spyClient = spy(client);
@@ -187,6 +232,12 @@ public class WebSocketClientReaderTest {
         verify(spyClient, atLeastOnce()).reconnect();
     }
 
+    /**
+     * Tests the readData method to ensure a successful connection attempt.
+     * 
+     * @throws URISyntaxException if the URI syntax is incorrect
+     * @throws IOException if an I/O error occurs
+     */
     @Test
     public void testReadData_successfulConnection() throws URISyntaxException, IOException {
         WebSocketClientReader spyClient = spy(client);
@@ -201,6 +252,12 @@ public class WebSocketClientReaderTest {
         verify(spyClient, times(1)).connect();
     }
 
+    /**
+     * Tests the readData method handling a connection attempt failure.
+     * 
+     * @throws URISyntaxException if the URI syntax is incorrect
+     * @throws IOException if an I/O error occurs
+     */
     @Test
     public void testReadData_connectionAttemptFailure() throws URISyntaxException, IOException {
         WebSocketClientReader spyClient = spy(client);
@@ -222,5 +279,4 @@ public class WebSocketClientReaderTest {
         // Verify that the error message was printed to System.err
         assertTrue(errContent.toString().contains("Connection attempt failed: Connection attempt failed"));
     }
-
 }
