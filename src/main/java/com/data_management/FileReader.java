@@ -7,7 +7,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
 
-public class FileReader implements DataReader{
+// implements DataReader
+public class FileReader {
     private String directoryPath;
 
     /**
