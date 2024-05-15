@@ -8,7 +8,7 @@ import com.data_management.DataStorage;
 import com.data_management.FileReader;
 import com.data_management.Patient;
 import com.data_management.PatientRecord;
-
+import java.io.IOException;
 import java.util.List;
 
 class DataStorageANDFileReaderTest {
@@ -41,4 +41,20 @@ class DataStorageANDFileReaderTest {
         List<PatientRecord> records = storage.getRecords(10, 1714748468033L, 1714748468034L);
         assertEquals(0, records.size()); // Check if the new empty Array was created
     }
+
+    @Test
+    void testReadDataFileReadingError() {
+        DataReaderFile reader = new FileReader("invalid/directory/path");
+        DataStorage storage = new DataStorage();
+
+        Exception exception = assertThrows(IOException.class, () -> {
+            reader.readData(storage);
+        });
+
+        String expectedMessage = "Error walking through directory";
+        String actualMessage = exception.getMessage();
+
+        assertTrue(actualMessage.contains(expectedMessage));
+    }
+
 }
