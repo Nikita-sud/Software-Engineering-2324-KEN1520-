@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 import com.data_management.DataReader;
+import com.data_management.DataReaderFile;
 import com.data_management.DataStorage;
 import com.data_management.FileReader;
 import com.data_management.Patient;
@@ -16,7 +17,7 @@ class DataStorageANDFileReaderTest {
     @Test
     void testAddAndGetRecords() {
 
-        DataReader reader = new FileReader("src/test/java/data_management/outputFilesTest");
+        DataReaderFile reader = new FileReader("src/test/java/data_management/outputFilesTest");
         
         DataStorage storage = new DataStorage();
         
