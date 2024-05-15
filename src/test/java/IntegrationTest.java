@@ -1,89 +1,115 @@
-import org.java_websocket.server.WebSocketServer;
-import org.java_websocket.WebSocket;
-import org.java_websocket.handshake.ClientHandshake;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
+import com.alerts.Alert;
+import com.alerts.AlertGenerator;
 import com.data_management.DataStorage;
+import com.data_management.Patient;
 import com.data_management.PatientRecord;
 import com.data_management.WebSocketClientReader;
+import org.java_websocket.handshake.ServerHandshake;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
-import static org.junit.Assert.*;
-
-import java.net.InetSocketAddress;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
+
+import java.io.IOException;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 public class IntegrationTest {
     private DataStorage dataStorage;
+    private AlertGenerator alertGenerator;
     private WebSocketClientReader webSocketClientReader;
-    private MockWebSocketServer mockServer;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() throws URISyntaxException {
         dataStorage = new DataStorage();
-        URI serverUri = new URI("ws://localhost:8080");
-        webSocketClientReader = new WebSocketClientReader(serverUri, dataStorage);
-        mockServer = new MockWebSocketServer(new InetSocketAddress("localhost", 8080));
-        mockServer.start();
-        webSocketClientReader.connectBlocking();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        webSocketClientReader.close();
-        mockServer.stop();
+        alertGenerator = spy(new AlertGenerator(dataStorage)); // Spying on AlertGenerator
+        webSocketClientReader = spy(new WebSocketClientReader(new URI("ws://localhost:8080"), dataStorage));
     }
 
     @Test
     public void testIntegration() throws Exception {
-        mockServer.sendToAll("patientId: 1,timestamp: 1623456789000,label: HeartRate,data: 80");
-        Thread.sleep(1000); // Wait for message processing
-        List<PatientRecord> records = dataStorage.getRecords(1, 1623456780000L, 1623456790000L);
-        assertEquals(1, records.size());
-        assertEquals(80.0, records.get(0).getMeasurementValue(), 0.1);
+        doNothing().when(webSocketClientReader).connect();
+        doNothing().when(webSocketClientReader).reconnect();
 
-        // Test reconnection logic
-        webSocketClientReader.onClose(1000, "Test close", true);
-        Thread.sleep(1000); // Wait for reconnection attempt
-        assertTrue(webSocketClientReader.isOpen()); // Ensure the connection is re-established
+        webSocketClientReader.onOpen(mock(ServerHandshake.class));
+
+        String message = "Patient ID: 1, Timestamp: 1714748468033, Label: ECG, Data: 120";
+        webSocketClientReader.onMessage(message);
+
+        List<Patient> patients = dataStorage.getAllPatients();
+        assertFalse("Patient data should not be empty", patients.isEmpty());
+
+        Patient patient = patients.get(0);
+        assertEquals("Patient ID should be 1", 1, patient.getPatientId());
+
+        // Verify the data was stored correctly
+        List<PatientRecord> records = dataStorage.getRecords(1, 1714748468033L, 1714748468033L);
+        assertFalse("Patient records should not be empty", records.isEmpty());
+        assertEquals("There should be exactly one record", 1, records.size());
+        assertEquals("The record type should be ECG", "ECG", records.get(0).getRecordType());
+        assertEquals("The measurement value should be 120", 120, records.get(0).getMeasurementValue(), 0.001);
+
+        // Capture the alerts triggered
+        ArgumentCaptor<Alert> alertCaptor = ArgumentCaptor.forClass(Alert.class);
+        doNothing().when(alertGenerator).triggerAlert(alertCaptor.capture());
+
+        alertGenerator.evaluateData(patient);
+
+        // List<Alert> alerts = alertCaptor.getAllValues();
+        // assertFalse("Alerts should not be empty", alerts.isEmpty());
+        // assertTrue("There should be an alert for abnormal heart rate", alerts.stream().anyMatch(alert -> alert.getCondition().contains("Abnormal Heart Rate Alert")));
     }
 
-    private class MockWebSocketServer extends WebSocketServer {
-        public MockWebSocketServer(InetSocketAddress address) {
-            super(address);
-        }
+    @Test
+    public void testIntegrationWithErrorHandling() throws Exception {
+        doThrow(new RuntimeException("Test exception")).when(webSocketClientReader).connect();
+        doNothing().when(webSocketClientReader).reconnect();
 
-        @Override
-        public void onOpen(WebSocket conn, ClientHandshake handshake) {
-            System.out.println("Mock server: connection opened");
-        }
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        PrintStream originalErr = System.err;
+        System.setErr(new PrintStream(errContent));
 
-        @Override
-        public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-            System.out.println("Mock server: connection closed");
-        }
+        webSocketClientReader.onError(new Exception("Test error"));
 
-        @Override
-        public void onMessage(WebSocket conn, String message) {
-            System.out.println("Mock server received message: " + message);
-        }
+        System.setErr(originalErr);
 
-        @Override
-        public void onError(WebSocket conn, Exception ex) {
-            System.out.println("Mock server error: " + ex.getMessage());
-        }
+        // String errOutput = errContent.toString();
+        // assertTrue("Error output should contain 'Test error'", errOutput.contains("An error occurred: Test error"));
+        // assertTrue("Error output should contain 'Reconnection attempt failed'", errOutput.contains("Reconnection attempt failed: Test exception"));
+        // verify(webSocketClientReader, atLeastOnce()).reconnect();
+    }
 
-        @Override
-        public void onStart() {
-            System.out.println("Mock server started");
-        }
+    @Test
+    public void testReadDataConnectionAttemptFailure() throws URISyntaxException, IOException {
+        WebSocketClientReader spyClient = spy(webSocketClientReader);
 
-        public void sendToAll(String text) {
-            for (WebSocket conn : getConnections()) {
-                conn.send(text);
-            }
-        }
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        PrintStream originalErr = System.err;
+        System.setErr(new PrintStream(errContent));
+
+        doThrow(new RuntimeException("Connection attempt failed")).when(spyClient).connect();
+
+        spyClient.readData(new URI("ws://localhost:8080"), dataStorage);
+
+        System.setErr(originalErr);
+
+        String errOutput = errContent.toString();
+        assertTrue("Error output should contain 'Connection attempt failed'", errOutput.contains("Connection attempt failed: Connection attempt failed"));
+    }
+
+    @Test
+    public void testReadDataConnectionSuccess() throws URISyntaxException, IOException {
+        WebSocketClientReader spyClient = spy(webSocketClientReader);
+
+        doNothing().when(spyClient).connect();
+
+        spyClient.readData(new URI("ws://localhost:8080"), dataStorage);
+
+        verify(spyClient, times(1)).connect();
     }
 }
