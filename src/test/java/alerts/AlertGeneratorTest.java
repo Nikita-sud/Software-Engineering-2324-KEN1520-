@@ -1,4 +1,4 @@
-package alerts_management;
+package alerts;
 
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
