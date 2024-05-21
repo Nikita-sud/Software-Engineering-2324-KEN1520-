@@ -1,0 +1,43 @@
+package com.alerts;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.data_management.DataStorage;
+import com.data_management.Patient;
+import com.data_management.PatientRecord;
+
+public class OxygenSaturationStrategy extends AlertGenerator implements AlertStrategy{
+    private DataStorage dataStorage;
+    public OxygenSaturationStrategy(DataStorage dataStorage) {
+        super(dataStorage);
+    }
+
+
+    @Override
+    public void checkAlert(Patient patient) {
+    long currentTime = System.currentTimeMillis();
+        List<PatientRecord> records = dataStorage.getRecords(patient.getPatientId(), currentTime - 600000, currentTime)
+            .stream()
+            .filter(r -> "Saturation".equals(r.getRecordType()))
+            .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
+            .collect(Collectors.toList());
+    
+        for (PatientRecord record : records) {
+            if (record.getMeasurementValue() < 92) {
+                super.triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Low Saturation Alert", record.getTimestamp()));
+                break; // Ensure only the first applicable alert is triggered
+            }
+        }
+    
+        for (int i = 1; i < records.size(); i++) {
+            double dropPercentage = 100.0 * (records.get(i - 1).getMeasurementValue() - records.get(i).getMeasurementValue()) / records.get(i - 1).getMeasurementValue();
+            if (dropPercentage >= 5) {
+                super.triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Rapid Blood Oxygen Drop Alert", records.get(i).getTimestamp()));
+                break; // Ensure proper alert sequence
+            }
+        }
+    }
+    
+}
