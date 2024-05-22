@@ -26,6 +26,15 @@ public class AlertGenerator {
     }
 
     /**
+     * Sets the alert strategy to be used.
+     *
+     * @param strategy the alert strategy to set
+     */
+    public void setStrategy(AlertStrategy strategy) {
+        this.strategy = strategy;
+    }
+
+    /**
      * Evaluates patient data to determine if any alert conditions are met.
      * If a condition is met, an alert is triggered.
      *
@@ -37,7 +46,7 @@ public class AlertGenerator {
             throw new NullPointerException("Patient data is null.");
         }
 
-        // using strategy pattern
+        // using strategy pattern instead of method calls
         strategy.checkAlert(patient);
 
         // evaluateBloodPressure(patient);
@@ -46,9 +55,7 @@ public class AlertGenerator {
         // evaluateHypotensiveHypoxemia(patient);
     }
 
-    public void setStrategy(AlertStrategy strategy) {
-        this.strategy = strategy;
-    }
+
 
     /**
      * Evaluates the patient's recent blood pressure and oxygen saturation to identify hypotensive hypoxemia conditions.
