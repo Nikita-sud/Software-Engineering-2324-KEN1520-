@@ -24,6 +24,7 @@ public class BloodPressureStrategy extends AlertGenerator implements AlertStrate
      */
     public BloodPressureStrategy(DataStorage dataStorage) {
         super(dataStorage);
+        this.dataStorage = dataStorage;
     }
 
     /**

@@ -23,6 +23,8 @@ public class OxygenSaturationStrategy extends AlertGenerator implements AlertStr
      */
     public OxygenSaturationStrategy(DataStorage dataStorage) {
         super(dataStorage);
+        this.dataStorage = dataStorage;
+
     }
 
     /**

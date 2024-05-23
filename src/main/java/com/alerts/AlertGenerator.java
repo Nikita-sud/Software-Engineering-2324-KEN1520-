@@ -31,6 +31,9 @@ public class AlertGenerator {
      * @param strategy the alert strategy to set
      */
     public void setStrategy(AlertStrategy strategy) {
+        if (strategy == null) {
+            throw new NullPointerException("Strategy must not be null.");
+        }
         this.strategy = strategy;
     }
 
@@ -46,13 +49,29 @@ public class AlertGenerator {
             throw new NullPointerException("Patient data is null.");
         }
 
-        // using strategy pattern instead of method calls
-        strategy.checkAlert(patient);
 
-        // evaluateBloodPressure(patient);
-        // evaluateBloodOxygen(patient);
-        // evaluateECGData(patient);
-        // evaluateHypotensiveHypoxemia(patient);
+
+        evaluateBloodPressure(patient);
+        evaluateBloodOxygen(patient);
+        evaluateECGData(patient);
+        evaluateHypotensiveHypoxemia(patient);
+    }
+
+    /**
+     * Evaluates patient data to determine if any alert conditions are met.
+     * If a condition is met, an alert is triggered with using STRATEGY patern.
+     *
+     * @param patient the patient data to evaluate for alert conditions
+     */
+    public void evaluateDataSTRATEGY_PATTERN(Patient patient) {
+        if (patient == null) {
+            throw new NullPointerException("Patient data is null.");
+        } else if (strategy == null) {
+            throw new NullPointerException("Strategy must not be null.");
+        }
+        // using strategy pattern instead of method calls
+        System.out.println(strategy);
+        strategy.checkAlert(patient);
     }
 
 
@@ -82,87 +101,87 @@ public class AlertGenerator {
      *
      * @param patient the patient whose blood pressure is monitored
      */
-    // private void evaluateBloodPressure(Patient patient) {
-    //     long currentTime = System.currentTimeMillis();
-    //     long oneDayAgo = currentTime - 86400000;
+    private void evaluateBloodPressure(Patient patient) {
+        long currentTime = System.currentTimeMillis();
+        long oneDayAgo = currentTime - 86400000;
     
-    //     List<PatientRecord> systolicRecords = dataStorage.getRecords(patient.getPatientId(), oneDayAgo, currentTime)
-    //         .stream()
-    //         .filter(r -> "SystolicPressure".equals(r.getRecordType()))
-    //         .sorted(Comparator.comparingLong(PatientRecord::getTimestamp).reversed())
-    //         .collect(Collectors.toList());
+        List<PatientRecord> systolicRecords = dataStorage.getRecords(patient.getPatientId(), oneDayAgo, currentTime)
+            .stream()
+            .filter(r -> "SystolicPressure".equals(r.getRecordType()))
+            .sorted(Comparator.comparingLong(PatientRecord::getTimestamp).reversed())
+            .collect(Collectors.toList());
     
-    //     List<PatientRecord> diastolicRecords = dataStorage.getRecords(patient.getPatientId(), oneDayAgo, currentTime)
-    //         .stream()
-    //         .filter(r -> "DiastolicPressure".equals(r.getRecordType()))
-    //         .sorted(Comparator.comparingLong(PatientRecord::getTimestamp).reversed())
-    //         .collect(Collectors.toList());
+        List<PatientRecord> diastolicRecords = dataStorage.getRecords(patient.getPatientId(), oneDayAgo, currentTime)
+            .stream()
+            .filter(r -> "DiastolicPressure".equals(r.getRecordType()))
+            .sorted(Comparator.comparingLong(PatientRecord::getTimestamp).reversed())
+            .collect(Collectors.toList());
     
-    //     if (!systolicRecords.isEmpty()) {
-    //         checkAndTriggerPressureAlerts(systolicRecords, "Systolic", currentTime, patient);
-    //     }
-    //     if (!diastolicRecords.isEmpty()) {
-    //         checkAndTriggerPressureAlerts(diastolicRecords, "Diastolic", currentTime, patient);
-    //     }
-    // }
+        if (!systolicRecords.isEmpty()) {
+            checkAndTriggerPressureAlerts(systolicRecords, "Systolic", currentTime, patient);
+        }
+        if (!diastolicRecords.isEmpty()) {
+            checkAndTriggerPressureAlerts(diastolicRecords, "Diastolic", currentTime, patient);
+        }
+    }
     
-    // private void checkAndTriggerPressureAlerts(List<PatientRecord> records, String type, long currentTime, Patient patient) {
-    //     // Check critical thresholds
-    //     for (PatientRecord record : records) {
-    //         if ((type.equals("Systolic") && (record.getMeasurementValue() > 180 || record.getMeasurementValue() < 90))) {
-    //             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Critical Pressure Threshold Alert (Systolic)", record.getTimestamp()));
-    //         }
-    //         if ((type.equals("Diastolic") && (record.getMeasurementValue() > 120 || record.getMeasurementValue() < 60))) {
-    //             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Critical Pressure Threshold Alert (Diastolic)", record.getTimestamp()));
-    //         }
-    //     }
+    private void checkAndTriggerPressureAlerts(List<PatientRecord> records, String type, long currentTime, Patient patient) {
+        // Check critical thresholds
+        for (PatientRecord record : records) {
+            if ((type.equals("Systolic") && (record.getMeasurementValue() > 180 || record.getMeasurementValue() < 90))) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Critical Pressure Threshold Alert (Systolic)", record.getTimestamp()));
+            }
+            if ((type.equals("Diastolic") && (record.getMeasurementValue() > 120 || record.getMeasurementValue() < 60))) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Critical Pressure Threshold Alert (Diastolic)", record.getTimestamp()));
+            }
+        }
     
-    //     // Check trends
-    //     if (records.size() >= 3) {
-    //         boolean increasing = true;
-    //         boolean decreasing = true;
-    //         for (int i = 0; i < records.size() - 1; i++) {
-    //             increasing &= (records.get(i).getMeasurementValue() - records.get(i + 1).getMeasurementValue() > 10);
-    //             decreasing &= (records.get(i + 1).getMeasurementValue() - records.get(i).getMeasurementValue() > 10);
-    //         }
+        // Check trends
+        if (records.size() >= 3) {
+            boolean increasing = true;
+            boolean decreasing = true;
+            for (int i = 0; i < records.size() - 1; i++) {
+                increasing &= (records.get(i).getMeasurementValue() - records.get(i + 1).getMeasurementValue() > 10);
+                decreasing &= (records.get(i + 1).getMeasurementValue() - records.get(i).getMeasurementValue() > 10);
+            }
     
-    //         if (increasing) {
-    //             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), type + "Pressure Increasing Trend Alert", currentTime));
-    //         }
-    //         if (decreasing) {
-    //             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), type + "Pressure Decreasing Trend Alert", currentTime));
-    //         }
-    //     }
-    // }
+            if (increasing) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), type + "Pressure Increasing Trend Alert", currentTime));
+            }
+            if (decreasing) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), type + "Pressure Decreasing Trend Alert", currentTime));
+            }
+        }
+    }
     
     /**
      * Evaluates oxygen saturation data to detect critically low levels or rapid decreases that may indicate a respiratory issue.
      *
      * @param patient the patient whose oxygen saturation levels are being monitored
      */
-    // public void evaluateBloodOxygen(Patient patient) {
-    //     long currentTime = System.currentTimeMillis();
-    //     List<PatientRecord> records = dataStorage.getRecords(patient.getPatientId(), currentTime - 600000, currentTime)
-    //         .stream()
-    //         .filter(r -> "Saturation".equals(r.getRecordType()))
-    //         .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
-    //         .collect(Collectors.toList());
+    public void evaluateBloodOxygen(Patient patient) {
+        long currentTime = System.currentTimeMillis();
+        List<PatientRecord> records = dataStorage.getRecords(patient.getPatientId(), currentTime - 600000, currentTime)
+            .stream()
+            .filter(r -> "Saturation".equals(r.getRecordType()))
+            .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
+            .collect(Collectors.toList());
     
-    //     for (PatientRecord record : records) {
-    //         if (record.getMeasurementValue() < 92) {
-    //             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Low Saturation Alert", record.getTimestamp()));
-    //             break; // Ensure only the first applicable alert is triggered
-    //         }
-    //     }
+        for (PatientRecord record : records) {
+            if (record.getMeasurementValue() < 92) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Low Saturation Alert", record.getTimestamp()));
+                break; // Ensure only the first applicable alert is triggered
+            }
+        }
     
-    //     for (int i = 1; i < records.size(); i++) {
-    //         double dropPercentage = 100.0 * (records.get(i - 1).getMeasurementValue() - records.get(i).getMeasurementValue()) / records.get(i - 1).getMeasurementValue();
-    //         if (dropPercentage >= 5) {
-    //             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Rapid Blood Oxygen Drop Alert", records.get(i).getTimestamp()));
-    //             break; // Ensure proper alert sequence
-    //         }
-    //     }
-    // }
+        for (int i = 1; i < records.size(); i++) {
+            double dropPercentage = 100.0 * (records.get(i - 1).getMeasurementValue() - records.get(i).getMeasurementValue()) / records.get(i - 1).getMeasurementValue();
+            if (dropPercentage >= 5) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Rapid Blood Oxygen Drop Alert", records.get(i).getTimestamp()));
+                break; // Ensure proper alert sequence
+            }
+        }
+    }
     
     
     
@@ -171,50 +190,50 @@ public class AlertGenerator {
      *
      * @param patient the patient whose ECG data is being analyzed
      */
-    // private void evaluateECGData(Patient patient) {
-    //     long currentTime = System.currentTimeMillis();
-    //     long oneHourAgo = currentTime - 3600000;
-    //     List<PatientRecord> ecgRecords = dataStorage.getRecords(patient.getPatientId(), oneHourAgo, currentTime)
-    //         .stream()
-    //         .filter(r -> "ECG".equals(r.getRecordType()))
-    //         .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
-    //         .collect(Collectors.toList());
+    private void evaluateECGData(Patient patient) {
+        long currentTime = System.currentTimeMillis();
+        long oneHourAgo = currentTime - 3600000;
+        List<PatientRecord> ecgRecords = dataStorage.getRecords(patient.getPatientId(), oneHourAgo, currentTime)
+            .stream()
+            .filter(r -> "ECG".equals(r.getRecordType()))
+            .sorted(Comparator.comparingLong(PatientRecord::getTimestamp))
+            .collect(Collectors.toList());
     
-    //     if (ecgRecords.isEmpty()) {
-    //         return;
-    //     }
+        if (ecgRecords.isEmpty()) {
+            return;
+        }
     
-    //     // Check for abnormal heart rate
-    //     for (PatientRecord record : ecgRecords) {
-    //         if (record.getMeasurementValue() < 50 || record.getMeasurementValue() > 100) {
-    //             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Abnormal Heart Rate Alert", record.getTimestamp()));
-    //         }
-    //     }
+        // Check for abnormal heart rate
+        for (PatientRecord record : ecgRecords) {
+            if (record.getMeasurementValue() < 50 || record.getMeasurementValue() > 100) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Abnormal Heart Rate Alert", record.getTimestamp()));
+            }
+        }
     
-    //     // Calculate the average interval and determine irregularities
-    //     double averageInterval = calculateAverageInterval(ecgRecords);
-    //     double allowableVariation = averageInterval * 0.1; // Allowing 10% variation
+        // Calculate the average interval and determine irregularities
+        double averageInterval = calculateAverageInterval(ecgRecords);
+        double allowableVariation = averageInterval * 0.1; // Allowing 10% variation
     
-    //     PatientRecord previousRecord = ecgRecords.get(0);
-    //     for (int i = 1; i < ecgRecords.size(); i++) {
-    //         PatientRecord currentRecord = ecgRecords.get(i);
-    //         long intervalDifference = Math.abs(currentRecord.getTimestamp() - previousRecord.getTimestamp());
+        PatientRecord previousRecord = ecgRecords.get(0);
+        for (int i = 1; i < ecgRecords.size(); i++) {
+            PatientRecord currentRecord = ecgRecords.get(i);
+            long intervalDifference = Math.abs(currentRecord.getTimestamp() - previousRecord.getTimestamp());
     
-    //         if (Math.abs(intervalDifference - averageInterval) > allowableVariation) {
-    //             triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Irregular Beat Alert", currentRecord.getTimestamp()));
-    //             break;
-    //         }
-    //         previousRecord = currentRecord;
-    //     }
-    // }
+            if (Math.abs(intervalDifference - averageInterval) > allowableVariation) {
+                triggerAlert(new Alert(Integer.toString(patient.getPatientId()), "Irregular Beat Alert", currentRecord.getTimestamp()));
+                break;
+            }
+            previousRecord = currentRecord;
+        }
+    }
     
-    // private double calculateAverageInterval(List<PatientRecord> ecgRecords) {
-    //     long totalInterval = 0;
-    //     for (int i = 1; i < ecgRecords.size(); i++) {
-    //         totalInterval += (ecgRecords.get(i).getTimestamp() - ecgRecords.get(i - 1).getTimestamp());
-    //     }
-    //     return totalInterval / (double)(ecgRecords.size() - 1);
-    // }
+    private double calculateAverageInterval(List<PatientRecord> ecgRecords) {
+        long totalInterval = 0;
+        for (int i = 1; i < ecgRecords.size(); i++) {
+            totalInterval += (ecgRecords.get(i).getTimestamp() - ecgRecords.get(i - 1).getTimestamp());
+        }
+        return totalInterval / (double)(ecgRecords.size() - 1);
+    }
     
     
     

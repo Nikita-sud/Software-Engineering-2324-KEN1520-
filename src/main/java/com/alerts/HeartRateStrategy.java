@@ -23,6 +23,8 @@ public class HeartRateStrategy extends AlertGenerator implements AlertStrategy {
      */
     public HeartRateStrategy(DataStorage dataStorage) {
         super(dataStorage);
+        this.dataStorage = dataStorage;
+
     }
 
     /**
