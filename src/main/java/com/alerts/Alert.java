@@ -23,4 +23,12 @@ public class Alert {
     public long getTimestamp() {
         return timestamp;
     }
+
+    /**
+     * Triggers an alert based on identified conditions and logs the alert details.
+     *
+     */
+    public void triggerAlert() {
+        System.out.println("Alert: " + condition + " for patient " + patientId + " at " + timestamp);
+    }
 }

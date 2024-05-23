@@ -4,10 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.alerts.Alert;
 import com.alerts.AlertGenerator;
 import com.alerts.BloodPressureStrategy;
 import com.alerts.HeartRateStrategy;
 import com.alerts.OxygenSaturationStrategy;
+import com.alerts.decorator.PriorityAlertDecorator;
+import com.alerts.decorator.RepeatedAlertDecorator;
 import com.data_management.DataStorage;
 import com.data_management.Patient;
 import com.data_management.PatientRecord;
@@ -600,6 +604,47 @@ class AlertGeneratorTest {
         alertGenerator.setStrategy(oxygenStrategy);
         alertGenerator.evaluateDataSTRATEGY_PATTERN(patient);
         assertTrue(outContent.toString().contains("Low Saturation Alert"));
+    }
+
+        @Test
+    void testBasicAlert() {
+        Alert alert = new Alert("12345", "High Blood Pressure", System.currentTimeMillis());
+        alert.triggerAlert();
+        String output = outContent.toString();
+        assertTrue(output.contains("High Blood Pressure for patient 12345"), "Output: " + output);
+    }
+
+    @Test
+    void testRepeatedAlertDecorator() {
+        Alert basicAlert = new Alert("12345", "High Blood Pressure", System.currentTimeMillis());
+        Alert repeatedAlert = new RepeatedAlertDecorator(basicAlert);
+        repeatedAlert.triggerAlert();
+        String output = outContent.toString();
+        assertTrue(output.contains("High Blood Pressure for patient 12345"), "Output: " + output);
+        assertTrue(output.contains("Repeated alert check."), "Output: " + output);
+    }
+
+    @Test
+    void testPriorityAlertDecorator() {
+        Alert basicAlert = new Alert("12345", "High Blood Pressure", System.currentTimeMillis());
+        Alert priorityAlert = new PriorityAlertDecorator(basicAlert);
+        priorityAlert.triggerAlert();
+        String output = outContent.toString();
+        assertTrue(output.contains("High Blood Pressure for patient 12345"), "Output: " + output);
+        assertTrue(output.contains("Priority alert triggered."), "Output: " + output);
+    }
+    
+
+    @Test
+    void testCombinedDecorators() {
+        Alert basicAlert = new Alert("12345", "High Blood Pressure", System.currentTimeMillis());
+        Alert repeatedAlert = new RepeatedAlertDecorator(basicAlert);
+        Alert priorityAlert = new PriorityAlertDecorator(repeatedAlert);
+        priorityAlert.triggerAlert();
+        String output = outContent.toString();
+        assertTrue(output.contains("High Blood Pressure for patient 12345"), "Output: " + output);
+        assertTrue(output.contains("Repeated alert check."), "Output: " + output);
+        assertTrue(output.contains("Priority alert triggered."), "Output: " + output);
     }
 
 }
