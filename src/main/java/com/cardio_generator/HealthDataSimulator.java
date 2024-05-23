@@ -24,44 +24,58 @@ import com.cardio_generator.outputs.FileOutputStrategy;
 import com.cardio_generator.outputs.OutputStrategy;
 import com.cardio_generator.outputs.TcpOutputStrategy;
 import com.cardio_generator.outputs.WebSocketOutputStrategy;
-
 /**
- * HealthDataSimulator simulates health data for a specified number of patients
- * and outputs the data to a specified strategy (console, file, websocket, or TCP).
+ * HealthDataSimulator simulates health data for a specified number of patients and outputs the data to a specified strategy (console, file, websocket, or TCP).
  */
-
 public class HealthDataSimulator {
 
-    private static int DEFAULT_PATIENT_COUNT = 50; // Default number of patients
+    private static HealthDataSimulator instance;
+    private static int DEFAULT_PATIENT_COUNT = 50;
     private static ScheduledExecutorService scheduler;
-    private static OutputStrategy outputStrategy = new ConsoleOutputStrategy(); // Default output strategy
+    private static OutputStrategy outputStrategy = new ConsoleOutputStrategy();
     private static final Random RANDOM = new Random();
 
     /**
-     * Main method to set up and start the health data simulation.
-     * 
-     * @param args Command line arguments for configuring the simulation.
-     * @throws IOException if an I/O error occurs.
+     * Private constructor to prevent instantiation.
      */
-    public static void main(String[] args) throws IOException {        
+    private HealthDataSimulator() {}
+
+    /**
+     * Returns the singleton instance of HealthDataSimulator.
+     *
+     * @return the singleton instance of HealthDataSimulator.
+     */
+    public static synchronized HealthDataSimulator getInstance() {
+        if (instance == null) {
+            instance = new HealthDataSimulator();
+        }
+        return instance;
+    }
+
+    /**
+     * Sets up and starts the health data simulation based on the provided arguments.
+     *
+     * @param args command line arguments for configuring the simulation.
+     * @throws IOException if an I/O error occurs during setup.
+     */
+    public void startSimulation(String[] args) throws IOException {
         parseArguments(args);
 
         scheduler = Executors.newScheduledThreadPool(DEFAULT_PATIENT_COUNT * 4);
 
         List<Integer> patientIds = initializePatientIds(DEFAULT_PATIENT_COUNT);
-        Collections.shuffle(patientIds); // Randomize the order of patient IDs
+        Collections.shuffle(patientIds);
 
         scheduleTasksForPatients(patientIds);
     }
 
-    
     /**
      * Parses the command-line arguments to configure the simulation parameters.
-     * 
-     * @param args Command line arguments.
+     *
+     * @param args command line arguments.
      * @throws IOException if an error occurs while processing the output argument.
      */
-    private static void parseArguments(String[] args) throws IOException {
+    private void parseArguments(String[] args) throws IOException {
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "-h":
@@ -73,8 +87,7 @@ public class HealthDataSimulator {
                         try {
                             DEFAULT_PATIENT_COUNT = Integer.parseInt(args[++i]);
                         } catch (NumberFormatException e) {
-                            System.err
-                                    .println("Error: Invalid number of patients. Using default value: " + DEFAULT_PATIENT_COUNT);
+                            System.err.println("Error: Invalid number of patients. Using default value: " + DEFAULT_PATIENT_COUNT);
                         }
                     }
                     break;
@@ -93,12 +106,11 @@ public class HealthDataSimulator {
                         } else if (outputArg.startsWith("websocket:")) {
                             try {
                                 int port = Integer.parseInt(outputArg.substring(10));
-                                // Initialize your WфebSocket output strategy here
+                                // Initialize your WebSocket output strategy here
                                 outputStrategy = new WebSocketOutputStrategy(port);
                                 System.out.println("WebSocket output will be on port: " + port);
                             } catch (NumberFormatException e) {
-                                System.err.println(
-                                        "Invalid port for WebSocket output. Please specify a valid port number.");
+                                System.err.println("Invalid port for WebSocket output. Please specify a valid port number.");
                             }
                         } else if (outputArg.startsWith("tcp:")) {
                             try {
@@ -125,12 +137,11 @@ public class HealthDataSimulator {
     /**
      * Prints the help message with usage instructions.
      */
-    private static void printHelp() {
+    private void printHelp() {
         System.out.println("Usage: java HealthDataSimulator [options]");
         System.out.println("Options:");
         System.out.println("  -h                       Show help and exit.");
-        System.out.println(
-                "  --patient-count <count>  Specify the number of patients to simulate data for (default: 50).");
+        System.out.println("  --patient-count <count>  Specify the number of patients to simulate data for (default: 50).");
         System.out.println("  --output <type>          Define the output method. Options are:");
         System.out.println("                             'console' for console output,");
         System.out.println("                             'file:<directory>' for file output,");
@@ -138,17 +149,16 @@ public class HealthDataSimulator {
         System.out.println("                             'tcp:<port>' for TCP socket output.");
         System.out.println("Example:");
         System.out.println("  java HealthDataSimulator --patient-count 100 --output websocket:8080");
-        System.out.println(
-                "  This command simulates data for 100 patients and sends the output to WebSocket clients connected to port 8080.");
+        System.out.println("  This command simulates data for 100 patients and sends the output to WebSocket clients connected to port 8080.");
     }
 
     /**
      * Initializes a list of patient IDs.
-     * 
-     * @param count The number of patients.
+     *
+     * @param patientCount The number of patients.
      * @return A shuffled list of patient IDs.
      */
-    private static List<Integer> initializePatientIds(int patientCount) {
+    private List<Integer> initializePatientIds(int patientCount) {
         List<Integer> patientIds = new ArrayList<>();
         for (int i = 1; i <= patientCount; i++) {
             patientIds.add(i);
@@ -158,10 +168,10 @@ public class HealthDataSimulator {
 
     /**
      * Schedules the simulation tasks for each patient.
-     * 
+     *
      * @param patientIds The list of patient IDs.
      */
-    private static void scheduleTasksForPatients(List<Integer> patientIds) {
+    private void scheduleTasksForPatients(List<Integer> patientIds) {
         ECGDataGenerator ecgDataGenerator = new ECGDataGenerator(DEFAULT_PATIENT_COUNT);
         BloodSaturationDataGenerator bloodSaturationDataGenerator = new BloodSaturationDataGenerator(DEFAULT_PATIENT_COUNT);
         BloodPressureDataGenerator bloodPressureDataGenerator = new BloodPressureDataGenerator(DEFAULT_PATIENT_COUNT);
@@ -179,12 +189,12 @@ public class HealthDataSimulator {
 
     /**
      * Schedules a recurring task with a random initial delay.
-     * 
-     * @param task The task to schedule.
+     *
+     * @param task   The task to schedule.
      * @param period The period between successive executions.
      * @param timeUnit The time unit of the period.
      */
-    private static void scheduleTask(Runnable task, long period, TimeUnit timeUnit) {
+    private void scheduleTask(Runnable task, long period, TimeUnit timeUnit) {
         scheduler.scheduleAtFixedRate(task, RANDOM.nextInt(5), period, timeUnit);
     }
 }
