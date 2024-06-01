@@ -18,9 +18,6 @@ import java.io.IOException;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Integration tests for the data management and alert generation system.
- */
 public class IntegrationTest {
 
     private DataStorage dataStorage;
@@ -37,7 +34,8 @@ public class IntegrationTest {
      */
     @BeforeEach
     void setUp() throws URISyntaxException {
-        dataStorage = new DataStorage();
+        dataStorage = DataStorage.getInstance();
+        dataStorage.clear(); // Clear the data storage before each test
         alertGenerator = spy(new AlertGenerator(dataStorage));
         webSocketClientReader = spy(new WebSocketClientReader(new URI("ws://localhost:8080"), dataStorage));
 
@@ -67,8 +65,7 @@ public class IntegrationTest {
 
         webSocketClientReader.onOpen(mock(ServerHandshake.class));
 
-        // Ensure the timestamp falls within the expected range
-        long timestamp = currentTime - 1000; // 1 second ago
+        long timestamp = currentTime - 1000; // Ensure the timestamp falls within the expected range
 
         String message = "Patient ID: 1, Timestamp: " + timestamp + ", Label: ECG, Data: 160";
         webSocketClientReader.onMessage(message);
@@ -79,7 +76,6 @@ public class IntegrationTest {
         Patient patient = patients.get(0);
         assertEquals(1, patient.getPatientId(), "Patient ID should be 1");
 
-        // Verify the data was stored correctly
         List<PatientRecord> records = dataStorage.getRecords(1, timestamp, timestamp);
         assertFalse(records.isEmpty(), "Patient records should not be empty");
         assertEquals(1, records.size(), "There should be exactly one record");

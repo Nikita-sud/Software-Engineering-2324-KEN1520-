@@ -82,6 +82,14 @@ public class DataStorage {
         // Synchronisation ensures that data is updated and read in a consistent state
         return new ArrayList<>(patientMap.values());
     }
+
+    /**
+     * Clears patients data.
+     */
+    public synchronized void clear() {
+        patientMap.clear();
+    }
+    
     /**
      * The main method for the DataStorage class.
      * Initializes the system, reads data into storage, and continuously monitors
